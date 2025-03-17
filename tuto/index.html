@@ -1,0 +1,161 @@
+<html>
+
+<head>
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <script src="api.js"></script>
+  <style>
+    .comm {
+      color: green;
+    }
+
+    .gras {
+      font-weight: bold;
+    }
+
+    .code {
+      background-color: lightgrey;
+    }
+
+    .result {
+      color: blue;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Attendre que le DOM soit prêt</h2>
+
+  Il est préférable d'attendre que le DOM soit chargé avant de jouer les commandes grist.
+  <pre class="code">
+<b>function ready(fn) {
+  <span class="comm">// La fonction fn ne sera exécutée qu'après le chargement du DOM</span>
+  if (document.readyState !== 'loading') {
+    fn();
+  } else {
+    document.addEventListener('DOMContentLoaded', fn);
+  }
+}</b>
+
+ready(function () {
+  document.getElementById("acl").addEventListener("click", function () {  ...;  });
+  
+  grist.ready(...);
+  
+  grist.onRecords(table => { });
+  
+  grist.onRecord(record => { });
+});</pre>
+
+  <h2>Exécuter une API GRIST</h2>
+
+  <p>On peut exécuter une API GRIST depuis un plugin</p>
+
+  <pre class="code">
+<span class="comm">// Récupère le contenu d'une table du document</span>
+async function query1(table) {
+  document.getElementById('dump1').innerHTML = "... en cours...";
+  const tokenInfo = await grist.docApi.getAccessToken({readOnly: true});
+  const url = tokenInfo.baseUrl + `/tables/${table}/records?auth=${tokenInfo.token}`;
+  const response = await fetch(url, {
+  method: 'GET',
+  headers: {
+    'Content-Type': 'application/json',
+  }
+  });
+  return response.json();
+}</pre>
+
+  Nom de la table : <input type="text" id="table" value="Salaries" />
+  <button onclick="run1()">run</button>
+  <button onclick="clean('dump1')">Clean</button>
+  <pre class="result" id="dump1"></pre>
+
+  <h2>Exécuter une API EXTERNE</h2>
+
+  <p>On peut exécuter une API EXTERNE depuis un plugin</p>
+
+  <pre class="code">
+<span class="comm">// Récupère le contenu de https://geo.api.gouv.fr/regions</span>
+async function query2() {
+  document.getElementById('dump2').innerHTML = "... en cours...";
+  const url = <b>"https://geo.api.gouv.fr/regions"</b>;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    }
+  });
+  return response.json();
+}</pre>
+
+  Récupèrer la liste des régions :
+  <button onclick="run2()">run</button>
+  <button onclick="clean('dump2')">Clean</button>
+  <pre class="result" id="dump2"></pre>
+
+  <h2>Spécifier les colonnes d'un widget</h2>
+
+  <p>On peut spécifier les colonnes utilisables dans un widget</p>
+
+  <pre class="code">
+const columnsMappingOptions = [
+    {
+      name: "dateValidite",
+      title: "Date de validité",
+      optional: false,
+      type: "Date,DateTime",
+      description: "début de la validité",
+      allowMultiple: false,
+      strictType: true
+    },
+    {
+      name: "type",
+      title: "Type de référence",
+      optional: true,
+      type: "Choice,ChoiceList",
+      description: "Type de la référence",
+      allowMultiple: false
+    }
+  ];
+grist.ready({ <b>columns</b>: columnsMappingOptions });
+
+grist.onRecords((rows, <b>mappings</b>) => {
+  document.getElementById('col1').innerHTML = <b>mappings.dateValidite</b>;
+  document.getElementById('col2').innerHTML = <b>mappings.type</b>;
+});</pre>
+
+  <p>2 colonnes paramétrables doivent apparaitre dans la barre latérale de configuration du widget </p>
+
+  <ul>
+    <li>Date de validité - colonne associée : <span class="gras" id="col1"></span>
+      <span class="comm">// Modifier la colonne associée pour voir changer la valeur</span>
+    </li>
+    <li>Type de référence - colonne associée : <span class="gras" id="col2"></span>
+      <span class="comm">// Modifier la colonne associée pour voir changer la valeur</span>
+    </li>
+  </ul>
+
+  <h2>Les options dans un widget</h2>
+
+  <p>sont des paires cle-valeur qui persistent lorsqu'on enregistre le widget. On peut donc s'en servir pour un
+    paramétrage externe du widget</p>
+
+  <pre class="code">
+grist.onOptions((options, settings) => {
+  document.getElementById('dump3').innerHTML = "options.titre = " + options.titre;
+});
+
+async function changeOption() {
+  await grist.setOption("titre", document.getElementById('optiontitre').value);  
+}</pre>
+
+  option titre : <input type="text" id="optiontitre" value="new titre" /><button onclick="changeOption()">change
+    option</button>
+  <pre class="result" id="dump3"></pre>
+  <p>Lorsqu'on plusieurs options à modifier, il est préférable de passer par <b>grist.setOptions({...})</b> qui permet
+    de passer un tableau de paires cle-valeur</p>
+  <br><span>(V1.0)</span>
+</body>
+
+</html>
