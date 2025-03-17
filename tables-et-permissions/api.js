@@ -1,19 +1,28 @@
+function ready(fn) {
+  if (document.readyState !== 'loading') {
+    fn();
+  } else {
+    document.addEventListener('DOMContentLoaded', fn);
+  }
+}
 
-document.getElementById("acl").addEventListener("click", function () {
-  document.getElementById('dump').innerHTML = "... en cours ...";
-  affiche_ACL("dump");
-});
-document.getElementById("tables").addEventListener("click", function () {
-  document.getElementById('dump').innerHTML = "... en cours ...";
-  affiche_schema_tables("dump");
-});
+ready(function () {
+  document.getElementById("acl").addEventListener("click", function () {
+    document.getElementById('dump').innerHTML = "... en cours ...";
+    affiche_ACL("dump");
+  });
+  document.getElementById("tables").addEventListener("click", function () {
+    document.getElementById('dump').innerHTML = "... en cours ...";
+    affiche_schema_tables("dump");
+  });
 
-grist.ready({ requiredAccess: 'none' });
-grist.onRecords(table => {
-  //document.getElementById('dump').innerHTML = JSON.stringify(table, null, 2);
-});
-grist.onRecord(record => {
+  grist.ready({ requiredAccess: 'none' });
+  grist.onRecords(table => {
+    //document.getElementById('dump').innerHTML = JSON.stringify(table, null, 2);
+  });
+  grist.onRecord(record => {
 
+  });
 });
 
 //--------------------------------
