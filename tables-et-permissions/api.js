@@ -82,6 +82,15 @@ function affiche_schema_tables(div) {
   });
 }
 
+/* ---------------------------------------------------------------------------------
+ Pour récupérer la description de la table : interroger _grist_Views_section
+ 
+ _grist_Views_section : { "id" 23, "tableRef": 3, "title": "team", "description": "description jta"}
+ _grist_Tables        : { "id": 3, "tableId": "Team", "summarySourceTable": 0, "rawViewSectionRef": 23}
+ 
+ description = _grist_Views_section.description[_grist_Views_section.id.indexOf(_grist_Tables.rawViewSectionRef)]
+ ------------------------------------------------------------------------------------*/
+
 //--------------------------------
 function affiche_ACL(div) {
   grist.docApi.fetchTable("_grist_ACLResources").then(function (tables) {

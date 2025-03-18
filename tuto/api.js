@@ -17,10 +17,7 @@ const columnsMappingOptions = [
   }
 ];
 
-function clean(div) {
-  document.getElementById(div).innerHTML = "";
-}
-
+//--------------------------------
 grist.ready({ requiredAccess: 'none', columns: columnsMappingOptions });
 
 grist.onRecords((rows, mappings) => {
@@ -50,11 +47,13 @@ async function query1(table) {
   return response.json();
 }
 
+//--------------------------------
 async function run1() {
   let table = document.getElementById('table').value;
   try {
     const result = await query1(table);
-    document.getElementById('dump1').innerHTML = JSON.stringify(result, null, 2);
+    const xx = result.records.slice(0, 3);
+    document.getElementById('dump1').innerHTML = "Les 3 premiers records : <br>" + JSON.stringify(xx, null, 2);
   } catch (e) {
     console.error(e);
     document.getElementById('dump1').innerHTML = "erreur : " + String(e);
@@ -75,6 +74,7 @@ async function query2() {
   return response.json();
 }
 
+//--------------------------------
 async function run2() {
   try {
     const result = await query2();
@@ -89,8 +89,40 @@ async function run2() {
   }
 }
 
+//--------------------------------
+function clean(div) {
+  document.getElementById(div).innerHTML = "";
+}
+
+//--------------------------------
 async function changeOption() {
   await grist.setOption("titre", document.getElementById('optiontitre').value);
 }
 
+//--------------------------------
+function fetch_table(table, div) {
+  grist.docApi.fetchTable(table).then(function(records) {
+    document.getElementById(div).innerHTML = JSON.stringify(records).replace(/],"/g, "],<br>\"");
+  }).catch(function(e) {
+	  document.getElementById(div).innerHTML ="erreur " + String(e);
+	});
+}
+
+//--------------------------------
+async function run3() {
+  document.getElementById('dump4').innerHTML = "... en cours...";
+  fetch_table(document.getElementById("table1").value, "dump4");
+}
+
+//--------------------------------
+function list_tables() {
+  grist.docApi.listTables().then(function(tables) {
+    document.getElementById('dump5').innerHTML = JSON.stringify(tables);
+  });
+}
+
+//--------------------------------
+async function run4() {
+  list_tables();
+}
 

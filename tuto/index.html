@@ -3,6 +3,7 @@
 <head>
   <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
   <script src="api.js"></script>
+
   <style>
     .comm {
       color: green;
@@ -13,7 +14,7 @@
     }
 
     .code {
-      background-color: #e5e7e6;
+      background-color: whitesmoke;
     }
 
     .result {
@@ -42,9 +43,12 @@ ready(function () {
   
   grist.ready(...);
   
-  grist.onRecords(table => { });
+  grist.onRecords(table => { ... });
   
-  grist.onRecord(record => { });
+  grist.onRecord(record => { ... });
+
+  ... 
+  
 });</pre>
 
   <h2>Exécuter une API GRIST</h2>
@@ -54,8 +58,8 @@ ready(function () {
   <pre class="code">
 <span class="comm">// Récupère le contenu d'une table du document</span>
 async function query1(table) {
-  document.getElementById('dump1').innerHTML = "... en cours...";
   const tokenInfo = await grist.docApi.getAccessToken({readOnly: true});
+  <span class="comm">// le endpoint Tables/id_table/records pour le document courant</span>
   const url = tokenInfo.baseUrl + `/tables/${table}/records?auth=${tokenInfo.token}`;
   const response = await fetch(url, {
   method: 'GET',
@@ -78,7 +82,6 @@ async function query1(table) {
   <pre class="code">
 <span class="comm">// Récupère le contenu de https://geo.api.gouv.fr/regions</span>
 async function query2() {
-  document.getElementById('dump2').innerHTML = "... en cours...";
   const url = <b>"https://geo.api.gouv.fr/regions"</b>;
   const response = await fetch(url, {
     method: 'GET',
@@ -138,7 +141,7 @@ grist.onRecords((rows, <b>mappings</b>) => {
 
   <h2>Les options dans un widget</h2>
 
-  <p>sont des paires cle-valeur qui persistent lorsqu'on enregistre le widget. On peut donc s'en servir pour un
+  <p>sont des paires cle-valeur <b>qui persistent lorsqu'on enregistre le widget</b>. On peut donc s'en servir pour un
     paramétrage externe du widget</p>
 
   <pre class="code">
@@ -153,9 +156,72 @@ async function changeOption() {
   option titre : <input type="text" id="optiontitre" value="new titre" /><button onclick="changeOption()">change
     option</button>
   <pre class="result" id="dump3"></pre>
-  <p>Lorsqu'on plusieurs options à modifier, il est préférable de passer par <b>grist.setOptions({...})</b> qui permet
+  <p>Lorsqu'on a plusieurs options à modifier, il est préférable de passer par <b>grist.setOptions({...})</b> qui permet
     de passer un tableau de paires cle-valeur</p>
-  <br><span>(V1.0)</span>
+
+  <h2>Les plugin API : fetchtable</h2>
+  <p>On peut accéder au contenu d'une table avec <b>fetchtable</b></p>
+  <pre class="code">
+function fetch_table(table, div) {
+  grist.docApi.fetchTable(table).then(function(records) {
+    document.getElementById(div).innerHTML = JSON.stringify(records, null, 2);
+  });
+}</pre>
+
+Nom de la table : <input type="text" id="table1" value="Salaries" />
+  <button onclick="run3()">run</button>
+  <button onclick="clean('dump4')">Clean</button>
+  <pre class="result" id="dump4"></pre>
+
+<h2>Les plugin API : ajouter, modifier, supprimer un enregistrement</h2>
+  <p>Avec <b>applyUserActions</b></p>
+  <pre class="code">
+function add_agent() {
+  let newagent = {
+    "nom"  : "newagent",
+    "email": "new@yopmail.com",
+    "role" : ["L","USER"]
+  }
+  grist.docApi.<b>applyUserActions</b>([ [<b>'AddRecord'</b>, "Salaries", -1, newagent] ]).then(function(e) {
+    msg("agent ajouté");
+  }).catch(function(e) {
+    msg("erreur ajout agent " + String(e));
+  });
+}</pre>
+
+  <pre class="code">
+function supp_agent(id_agent) {
+  grist.docApi.<b>applyUserActions</b>([ [<b>'RemoveRecord'</b>, 'Salaries', id_agent] ]).then(function(e) {
+    msg("agent supprimé");
+  }).catch(function(e) {
+    msg("erreur suppression agent " + String(e));
+  });
+}</pre>
+
+  <pre class="code">
+function maj_team(id_user, texte) {
+  grist.docApi.<b>applyUserActions</b>([ [<b>'UpdateRecord'</b>, "Salaries", id_user, {
+    ["lib"]: texte
+  }]]).then(function(e) {
+    msg("maj ok");
+  }).catch(function(e) {
+    msg("erreur " + String(e));
+  });
+}</pre>
+
+<h2>Les plugin API : lister les tables</h2>
+  <p>Avec <b>listTables()</b></p>
+  <pre class="code">
+function list_tables() {
+  grist.docApi.<b>listTables()</b>.then(function(tables) {
+    document.getElementById('dump').innerHTML = JSON.stringify(tables);
+  });
+}</pre>
+  <button onclick="run4()">run</button>
+  <button onclick="clean('dump5')">Clean</button>
+  <pre class="result" id="dump5"></pre>
+
+  <br><span>(V1.1)</span>
 </body>
 
 </html>
