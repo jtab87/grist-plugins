@@ -1,2 +1,2 @@
 # grist-plugins
-plugin grist ASP
+plugins grist ASP
