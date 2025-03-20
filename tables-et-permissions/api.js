@@ -1,3 +1,6 @@
+const div = "container";
+const bouton = "bouton";
+
 function ready(fn) {
   if (document.readyState !== 'loading') {
     fn();
@@ -8,12 +11,14 @@ function ready(fn) {
 
 ready(function () {
   document.getElementById("acl").addEventListener("click", function () {
-    document.getElementById('dump').innerHTML = "... en cours ...";
-    affiche_ACL("dump");
+    document.getElementById(div).innerHTML = "... en cours ...";
+    document.getElementById(bouton).innerHTML = "";
+    affiche_ACL();
   });
   document.getElementById("tables").addEventListener("click", function () {
-    document.getElementById('dump').innerHTML = "... en cours ...";
-    affiche_schema_tables("dump");
+    document.getElementById(div).innerHTML = "... en cours ...";
+    document.getElementById(bouton).innerHTML = "";
+    affiche_schema_tables();
   });
 
   grist.ready({ requiredAccess: 'none' });
@@ -26,62 +31,105 @@ ready(function () {
 });
 
 //--------------------------------
-function affiche_schema_tables(div) {
+function affiche_schema_tables() {
   grist.docApi.fetchTable("_grist_Tables").then(function (tables) {
-    grist.docApi.fetchTable("_grist_Tables_column").then(function (champs) {
-      const BR = "<br>";
-      let html = "le : " + date_du_jour();
-      for (let i = 0; i < tables.id.length; i++) {
-        let id_table = tables.id[i];
-        let nom_table = tables.tableId[i];
-        html += getBalise("h3", nom_table) + debutTABLE("tbl1") + getTR(getTH("champ") + getTH("type") + getTH("formule") + getTH("choix"));
-        for (let j = 0; j < champs.id.length; j++) {
-          if (champs.parentId[j] == id_table) {
-            let nom_champ = champs.colId[j];
-            let label_champ = champs.label[j];
-            let type_champ = champs.type[j];
-            let choix = "";
-            let formule = champs.formula[j];
-            if (formule != "") {
-              if (champs.isFormula[j] == false) {
-                formule = getBalise("pre", getBalise("span", "Init : <br>", "titre1") + formule);
-              } else {
-                type_champ = "ƒ formule";
-                formule = getBalise("pre", formule);
-              }
-            }
-            if (champs.widgetOptions[j] != "") {
-              let xx = JSON.parse(champs.widgetOptions[j]);
-              if (xx.choices && type_champ.startsWith("Choice")) {
-                choix = xx.choices;
-                choix = choix.join(BR);
-              }
-              if (xx.dropdownCondition) {
-                formule = formule + getBalise("pre", getBalise("span", "DropdownCondition : <br>", "titre1") + xx.dropdownCondition.text);
-              }
-            }
-            if (champs.recalcDeps[j] !== null && champs.recalcDeps[j] !== "") {
-              formule = formule + getBalise("pre", getBalise("span", "Appliqué sur les modifs de : <br>", "titre1") + getColIds(champs.recalcDeps[j], champs.parentPos, champs.colId));
-            }
-            if (type_champ.startsWith("ChoiceList") || type_champ.startsWith("RefList")) {
-              choix = getBalise("div", "Choix multiples", "titre1") + choix;
-            }
-            if (type_champ.startsWith("Ref")) type_champ = "🔗" + type_champ;
-            if (type_champ != "ManualSortPos" && !nom_champ.startsWith("gristHelper_")) {
-              html += getTR(getTD(nom_champ, "gras") + getTD(type_champ) + getTD(formule) + getTD(choix));
-            }
+    grist.docApi.fetchTable("_grist_Tables_column").then(function (data) {
+
+      let result = [];
+
+      function getInitTrigger(deps, ids, labels) {
+        if (deps == "") return "";
+        let result = [];
+        deps.forEach(trigger => {
+          let x = ids.indexOf(trigger);
+          if (x > 0) {
+            result.push(labels[x]);
           }
+        });
+        return result.join(",");
+      }
+
+      for (let i = 0; i < data.id.length; i++) {
+        const tableNumber = data.parentId[i];
+        const fieldName = data.label[i];
+        const fieldType = data.type[i];
+        const formula = data.isFormula[i] ? data.formula[i] : "";
+        const initFormula = !data.isFormula[i] ? data.formula[i] : "";
+        const initTrigger = data.recalcDeps[i] ? data.recalcDeps[i] : "";
+        const choices = data.widgetOptions[i] && JSON.parse(data.widgetOptions[i]).choices || [];
+        const dropcond = data.widgetOptions[i] && JSON.parse(data.widgetOptions[i]).dropdownCondition || "";
+
+        if (fieldType != "ManualSortPos" && !fieldName.startsWith("gristHelper")) {
+          result.push({
+            tableNumber: tableNumber,
+            tableName: tables.tableId[tables.id.indexOf(data.parentId[i])],
+            fieldName: fieldName,
+            fieldType: formula != "" ? "Formule" : fieldType,
+            formula: formula,
+            initFormula: initFormula,
+            initTrigger: getInitTrigger(initTrigger, data.id, data.label),
+            choices: choices,
+            dropcond: dropcond ? dropcond.text : ""
+          });
         }
-        html += finTABLE();
-      };
-      document.getElementById(div).innerHTML = getDIV(html, "contenuTable") + BR + getButton("downloadBtn", "Enregistrer");
+      }
+
+      result.sort((a, b) => a.tableNumber - b.tableNumber);
+
+      const tablesGrouped = result.reduce((acc, curr) => {
+        if (!acc[curr.tableName]) {
+          acc[curr.tableName] = [];
+        }
+        acc[curr.tableName].push(curr);
+        return acc;
+      }, {});
+
+      // Generating HTML for each table
+      const container = document.getElementById(div);
+      container.innerHTML = "Le : " + date_du_jour();
+      for (const [tableName, rows] of Object.entries(tablesGrouped)) {
+        const tableHtml = `
+                <h2>${tableName}</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Champ</th>
+                            <th>Type</th>
+                            <th>Formule</th>
+                            <th>Choix</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map(row => {
+          const formulaContent = row.formula ? `<pre>${row.formula}</pre>` : '';
+          const initFormulaContent = row.initFormula ? `<span class="titre">Initialisation du champ : </span><pre>${row.initFormula}</pre>` : '';
+          const initTriggerContent = row.initTrigger ? `<span class="titre">Déclenché sur les modifs des colonnes : </span><pre>${row.initTrigger}</pre>` : '';
+          const dropcondContent = row.dropcond ? `<span class="titre">Dropdown condition : </span><pre>${row.dropcond}</pre>` : '';
+          const formulaText = initFormulaContent || formulaContent;
+          const choicesText = row.choices.length > 0 ? row.choices.join('<br>') : '';
+
+          return `
+                  <tr>
+                      <td><b>${row.fieldName}</b></td>
+                      <td>${row.fieldType}</td>
+                      <td>${formulaText}${initTriggerContent}${dropcondContent}</td>
+                      <td>${choicesText}</td>
+                  </tr>
+              `;
+        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        container.innerHTML += tableHtml;
+      }
+
+      document.getElementById(bouton).innerHTML = getButton("downloadBtn", "Enregistrer");
       document.getElementById("downloadBtn").addEventListener("click", function () {
-        downloadHTML("contenuTable", "stylejta", "Tables");
+        downloadHTML(div, "stylejta", "Tables");
       });
     });
   });
 }
-
 /* ---------------------------------------------------------------------------------
  Pour récupérer la description de la table : interroger _grist_Views_section
  
@@ -92,7 +140,7 @@ function affiche_schema_tables(div) {
  ------------------------------------------------------------------------------------*/
 
 //--------------------------------
-function affiche_ACL(div) {
+function affiche_ACL() {
   grist.docApi.fetchTable("_grist_ACLResources").then(function (tables) {
     grist.docApi.fetchTable("_grist_ACLRules").then(function (rules) {
       let records = inverseFetch(rules);
@@ -125,6 +173,7 @@ function affiche_ACL(div) {
         obj.tri = obj.table + obj.colonnes + records[i].rulePos;
         results.push(obj);
       }
+
       results.sort((a, b) => {
         if (a.tri < b.tri) {
           return -1;
@@ -134,87 +183,104 @@ function affiche_ACL(div) {
         }
         return 0;
       });
-      let html = "Le : " + date_du_jour();
-      html += getBalise("h3", "Users") + debutTABLE("tbl1") + getTR(getTH("nom attribut") + getTH("table concernée") + getTH("champ concerné") + getTH("attribut user"));
-      results.forEach(function (elt, index) {
-        if (elt.table == TABLEUSER) {
-          html += getTR(getTD(elt.nom_attribut) + getTD(elt.table_concernee) + getTD(elt.champ_concerne) + getTD(elt.attribut_user));
-        }
-      });
-      html += finTABLE(BR);
-      html += getBalise("h3", "Tables") + debutTABLE("tbl1") + getTR(getTH("table") + getTH("colonnes") + getTH("condition") + getTH("ACL") + getTH("Message"));
-      let tableCourante = "";
-      results.forEach(function (elt, index) {
-        if (elt.table !== TABLEUSER) {
-          if (elt.table !== tableCourante && tableCourante !== "") {
-            html += getTR(getTD("", "sep") + getTD("", "sep") + getTD("", "sep") + getTD("", "sep") + getTD("", "sep"));
+
+      function colorizeString(str) {
+        let result = str.replace(/([+-])([A-Za-z]+)/g, (match, sign, letters) => {
+          if (sign === '+') {
+            return `${sign}<span style="color: green;">${letters}</span>`;
+          } else if (sign === '-') {
+            return `${sign}<span style="color: red;">${letters}</span>`;
           }
-          html += getTR(getTD(elt.table == tableCourante ? "" : elt.table, "gras") + getTD(elt.colonnes) + getTD(elt.condition) + getTD(colorizeString(elt.ACL)) + getTD(elt.memo));
-          tableCourante = elt.table;
-        }
-      });
-      html += finTABLE();
-      document.getElementById(div).innerHTML = getDIV(html, "contenuACL") + BR + getButton("downloadBtn", "Enregistrer");
+        });
+        return result;
+      }
+
+      // Fonction pour générer la section Users (table "_xxx")
+      function generateUsersTable() {
+        let html = `
+            <h2>Users</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Nom Attribut</th>
+                        <th>Table Concernée</th>
+                        <th>Champ Concerné</th>
+                        <th>Attribut User</th>
+                    </tr>
+              </thead>
+              <tbody>`;
+
+        results.forEach(entry => {
+          if (entry.table.startsWith('_xxx')) {
+            html += `
+              <tr>
+                  <td>${entry.nom_attribut}</td>
+                  <td>${entry.table_concernee}</td>
+                  <td>${entry.champ_concerne}</td>
+                  <td>${entry.attribut_user}</td>
+              </tr>`;
+          }
+        });
+
+        html += `</tbody></table>`;
+        return html;
+      }
+
+      // Fonction pour générer la section Tables
+      function generateTables() {
+        let tableCourante = "";
+        let html = `
+            <h2>Tables</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Table</th>
+                        <th>Colonnes</th>
+                        <th>Condition</th>
+                        <th>ACL</th>
+                        <th>Memo</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        results.forEach(entry => {
+          if (!entry.table.startsWith('_xxx')) {
+            const premiereLigneTable = tableCourante != entry.table && tableCourante != "";
+            if (premiereLigneTable == true) {
+              html += `
+              <tr>
+                  <td class="sep"> </td>
+                  <td class="sep"> </td>
+                  <td class="sep"> </td>
+                  <td class="sep"> </td>
+                  <td class="sep"> </td>
+              </tr>`;
+            }
+            html += `
+              <tr>
+                  <td>${premiereLigneTable ? entry.table : ""}</td>
+                  <td>${entry.colonnes}</td>
+                  <td>${entry.condition}</td>
+                  <td>${colorizeString(entry.ACL)}</td>
+                  <td>${entry.memo}</td>
+              </tr>`;
+          }
+          tableCourante = entry.table;
+        });
+
+        html += `</tbody></table>`;
+        return html;
+      }
+      // Insérer les sections dans le DOM
+      document.getElementById(div).innerHTML = "Le : " + date_du_jour() + generateUsersTable() + generateTables();
+
+      document.getElementById(bouton).innerHTML = getButton("downloadBtn", "Enregistrer");
       document.getElementById("downloadBtn").addEventListener("click", function () {
-        downloadHTML("contenuACL", "stylejta", "ACL");
+        downloadHTML(div, "stylejta", "ACL");
       });
+
     });
   });
-}
-
-//--------------------------------
-function date_du_jour(fmt) {
-  fmt = fmt ? fmt : "j/m/a";
-  const today = new Date();
-  const day = String(today.getDate()).padStart(2, '0');
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const year = today.getFullYear();
-  fmt = fmt.replace("j", day).replace("m", month).replace("a", year);
-  return fmt;
-}
-function concatLigne(ligne1, ligne2) {
-  return ligne1 + (ligne1 ? "<br>" : "") + ligne2;
-}
-function getBalise(balise, txt, classe, colspan) {
-  classe = classe ? classe = " class='" + classe + "'" : "";
-  colspan = colspan ? colspan = " colspan=" + colspan : "";
-  return `<${balise}${classe}${colspan}>` + txt + `</${balise}>`;
-}
-function getTD(txt, classe, colspan) {
-  return getBalise("td", txt, classe, colspan);
-}
-function getTH(txt, classe, colspan) {
-  return getBalise("th", txt, classe, colspan);
-}
-function getTR(txt, classe) {
-  return getBalise("tr", txt, classe);
-}
-function getButton(id, texte) {
-  return `<button id='${id}'>${texte}</button>`;
-}
-function getDIV(texte, id, classe) {
-  id = id ? id = " id='" + id + "'" : "";
-  classe = classe ? classe = " class='" + classe + "'" : "";
-  return `<div ${id}${classe}>${texte}</div>`;
-}
-function debutTABLE(classe) {
-  return `<table class="${classe}">`;
-}
-function finTABLE(br) {
-  br = br ? br : "";
-  return "</table>" + br;
-}
-function getColIds(recalcDeps, parentPos, colId) {
-  let result = [];
-  recalcDeps.forEach(dep => {
-    if (dep !== "L") {
-      const parentIndex = parentPos.indexOf(dep);
-      if (parentIndex !== -1) {
-        result.push(colId[parentIndex]);
-      }
-    }
-  });
-  return result.join(", ");
 }
 
 //--------------------------------
@@ -233,15 +299,19 @@ function inverseFetch(records) {
 }
 
 //--------------------------------
-function colorizeString(str) {
-  let result = str.replace(/([+-])([A-Za-z]+)/g, (match, sign, letters) => {
-    if (sign === '+') {
-      return `${sign}<span style="color: green;">${letters}</span>`;
-    } else if (sign === '-') {
-      return `${sign}<span style="color: red;">${letters}</span>`;
-    }
-  });
-  return result;
+function getButton(id, texte) {
+  return `<button id='${id}'>${texte}</button>`;
+}
+
+//--------------------------------
+function date_du_jour(fmt) {
+  fmt = fmt ? fmt : "j/m/a";
+  const today = new Date();
+  const day = String(today.getDate()).padStart(2, '0');
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const year = today.getFullYear();
+  fmt = fmt.replace("j", day).replace("m", month).replace("a", year);
+  return fmt;
 }
 
 //--------------------------------
