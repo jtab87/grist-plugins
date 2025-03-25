@@ -1,0 +1,111 @@
+<html>
+
+<head>
+  <script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+  <script src="api.js"></script>
+  <style>
+    body {
+      font-family: Arial, Helvetica, Verdana;
+    }
+
+    .head {
+      display: flex;
+      background-color: #f0f0f0;
+      padding: 5px;
+      margin-bottom: 5px;
+    }
+
+    .box {
+      width: 33%
+    }
+
+    .droite {
+      text-align: right;
+      font-size: 12px;
+    }
+
+    h3 {
+      margin: 0;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 8px;
+      text-align: left;
+      border: 1px solid #ddd;
+      font-size: 12px;
+    }
+
+    tr:hover {
+      background-color: #f0f0f0;
+      cursor: pointer;
+    }
+
+    tr:active {
+      background-color: #ddd;
+    }
+
+    .ok {
+      color: green;
+    }
+
+    .ko {
+      color: red;
+    }
+
+    #info {
+      color: red;
+      margin-bottom: 5px;
+      font-size: 12px;
+    }
+
+    #dump {
+      color: grey;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="head">
+    <div class="box">
+      <h3>Vérification d'adresses</h3>
+    </div>
+    <div class="box"><button onclick="run()">Recherche</button></div>
+    <div class="box droite">
+      <label for="nbmax">Nombre maximum de lignes retournées :</label>
+      <select id="nbmax" onchange="changeNbMax(this)">
+        <option value="5"> 5 </option>
+        <option value="10"> 10 </option>
+        <option value="20"> 20 </option>
+        <option value="50"> 50 </option>
+      </select>
+    </div>
+  </div>
+  <div id="info">&nbsp;</div>
+  <table id="addressTable">
+    <thead>
+      <tr>
+        <th>Numéro</th>
+        <th>Adresse</th>
+        <th>Code Postal</th>
+        <th>Ville</th>
+        <th>Département</th>
+        <th>Région</th>
+        <th>Score</th>
+      </tr>
+    </thead>
+    <tbody>
+    </tbody>
+  </table>
+  <br><br>
+  <div id="dump"> </div>
+</body>
+
+</html>
