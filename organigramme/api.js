@@ -50,7 +50,7 @@ function ready(fn) {
 
 ready(function () {
 
-  grist.ready({ requiredAccess: 'none', columns: columnsMappingOptions });
+  grist.ready({ requiredAccess: 'read table', columns: columnsMappingOptions });
 
   grist.onRecords((table, mappings) => {
     //document.getElementById('dump').innerHTML = JSON.stringify(table, null, 2);
